@@ -272,4 +272,134 @@ import mongoose from "mongoose";
 })
 
 
-    export { registerUser, loginUser,logoutUser, refreshAccessToken };
+const changeCurrentPassword = asyncHandler(async (req, res) => {
+     const {oldPassword,newPassword} = req.body
+
+     const user= await User.findById(req.user._id) //  matlab ki find user fromm database
+
+     const isPasswordCorrect = await user.isPasswordCorrect(oldPassword) // matlab ki check karo ki old password sahi hai ya nahi
+
+        if(!isPasswordCorrect){
+            throw new ApiError(400, "invalid old password")
+        }
+
+        user.password = newPassword // matlab ki new password set kar do
+
+        await user.save({validateBeforeSave: false}) // matlab ki save kar do database me
+
+        return res
+        .status(200)
+        .json(
+            new ApiResponse(200, {}, "Password changed successfully")
+        )
+})
+
+const getCurrentUser = asyncHandler(async(req, res) => {
+    return res
+    .status(200)
+    .json(new ApiResponse(
+        200,
+        req.user,
+        "User fetched successfully"
+    ))
+})
+const updateAccountDetails = asyncHandler(async (req, res) => {
+    const {fullName,  email} = req.body
+
+    if(!fullName || !email){
+        throw new ApiError(400, "All fields are required ")
+
+    }
+    
+    const user=await User.findByIdAndUpdate(req.user?._id,
+        {
+             $set: {
+                fullName,
+                email: email
+             }   
+        },
+        {new: true} // iska matab ki updated user ko return karo, nahi to old user return karega
+    ).select("-password")
+
+     return res
+     .status(200)
+     .json(
+        new ApiResponse(200, user, "Account details updated successfully")
+     )
+});
+
+
+// NOW UPDATE THE FILES 
+const updateUserAvtar = asyncHandler(async (req, res) => {
+
+    const avatarLocalPath = req.files?.path;
+
+    if (!avatarLocalPath) {
+        throw new ApiError(400, "Avatar file is missing")
+
+    }
+
+    // DELETE OLD IMAGE - ASSIGNMENT 
+
+    const avatar = await uploadOnCloudinary(avatarLocalPath)
+
+    if (!avatar.url) {
+        throw new ApiError(500, "Something went wrong while uploading the avatar")
+    }
+
+    const user = await User.findByIdAndUpdate(
+        req.user?._id,
+        {
+            $set: {
+                avatar: avatar.url
+            }
+        },
+        {new: true}
+    ).select("-password")
+
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(200, user, "Avatar image  updated successfully")
+    )
+})
+
+//delete old image ka code likhna hai  
+
+
+const updateUserCoverImage = asyncHandler(async (req, res) => {
+    const coverImageLocalPath = req.files?.path;
+
+    if (!coverImageLocalPath) {
+        throw new ApiError(400, "Cover image file is missing")
+    }    
+
+    // DLETE OLD IMAGE 
+    const coverImage = await uploadOnCloudinary(coverImageLocalPath)
+
+    if (!coverImage.url) {
+        throw new ApiError(500, "Error while uploading the cover image")
+    }
+
+    const user = await User.findByIdAndUpdate(
+        req.user?._id,
+        {
+            $set: {
+                coverImage: coverImage.url
+            } // means that we are setting the new cover image url in the database for the user
+        },
+        {new: true}
+    ).select("-password")
+
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(200, user, "Cover image updated successfully")
+    )
+})
+
+// 
+
+
+
+    export { registerUser, loginUser,logoutUser, refreshAccessToken , changeCurrentPassword, updateAccountDetails, updateUserAvtar, updateUserCoverImage,getCurrentUser};
